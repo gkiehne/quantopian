@@ -137,7 +137,7 @@ def intradingwindow_check(context):
     """
     # Converts all time-zones into US EST to avoid confusion
     loc_dt = get_datetime().astimezone(timezone('US/Eastern'))
-    if loc_dt.hour == 10 and loc_dt.minute > 0:
+    if loc_dt.hour == 10 and loc_dt.minute == 0:
         return True
     else:
         return False
