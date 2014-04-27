@@ -47,8 +47,7 @@ def handle_data(context, data):
                  It represents a snapshot of your algorithm's universe as of
                  when this method was called.
     """
-    cash = context.portfolio.cash
-    record(cash=cash)
+    record(cash=context.portfolio.cash)
 
     if not context.init:
         # initializisation. Buy the same amount of each security
