@@ -84,7 +84,7 @@ def rmr_strategy(portfolio, stocks, data, prices, eps):
     """
     # update portfolio
     b_t = []
-    for i, stock in enumerate(stocks):
+    for stock in stocks:
         b_t.append(portfolio.positions[stock].amount * data[stock].price)
 
     b_t = np.divide(b_t, np.sum(b_t))
