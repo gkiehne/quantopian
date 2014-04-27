@@ -110,8 +110,8 @@ def rebalance_portfolio(context, desired_port):
     :param context: context object
     :param desired_port: list of desired percentages
     """
-    for i, stock in enumerate(context.stocks):
-        order_target_percent(stock, desired_port[i])
+    for stock, portion in zip(context.stocks, desired_port):
+        order_target_percent(stock, portion)
 
 def intradingwindow_check(context):
     """
