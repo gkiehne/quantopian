@@ -91,8 +91,7 @@ def rmr_strategy(portfolio, stocks, data, prices, eps):
 
     b_t = np.divide(b_t, np.sum(b_t))
 
-    m = len(stocks)
-    x_tilde = np.zeros(m)
+    x_tilde = np.zeros(len(stocks))
     for i, stock in enumerate(stocks):
         # Use numpy median until L1 median (spatial median) implemented
         median_price = np.median(prices[:,i])
