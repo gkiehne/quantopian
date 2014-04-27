@@ -108,13 +108,10 @@ def rmr_strategy(portfolio, stocks, data, prices, eps):
     num = eps - dot_prod
     denom = (np.linalg.norm((x_tilde - x_bar))) ** 2
 
+    b = b_t
     # test for divide-by-zero case
-    if denom == 0.0:
-        lam = 0 # no portolio update
-    else:
-        lam = max(0, num/denom)
-
-    b = b_t + lam*(x_tilde-x_bar)
+    if denom != 0.0:
+        b =  b_t + max(0, num/denom) *  (x_tilde -  x_bar)
 
     return simplex_projection(b)
 
