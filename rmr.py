@@ -48,8 +48,6 @@ def handle_data(context, data):
                  It represents a snapshot of your algorithm's universe as of
                  when this method was called.
     """
-    prices = history(6, '1d', 'price').as_matrix(context.stocks)[0:-1,:]
-
     cash = context.portfolio.cash
     record(cash=cash)
 
@@ -65,6 +63,8 @@ def handle_data(context, data):
     for stock in context.stocks:
         if bool(get_open_orders(stock)) or data[stock].datetime < get_datetime():
             return
+
+    prices = history(6, '1d', 'price').as_matrix(context.stocks)[0:-1,:]
 
     # update portfolio
     for i, stock in enumerate(context.stocks):
