@@ -67,18 +67,33 @@ def handle_data(context, data):
 
     prices = history(6, '1d', 'price').as_matrix(context.stocks)[0:-1,:]
 
+    parts = rmr_strategy(context.portfolio, context.stocks, data,
+                         prices, context.eps)
+    rebalance_portfolio(context, parts)
+
+def rmr_strategy(portfolio, stocks, data, prices, eps):
+    """
+    Core of Robust Median Reviersion strategy implementation.
+
+    :param portfolio: portfolio object
+    :param stocks: list of sid objects used in the algo
+    :param data: market event object
+    :param prices: historical data in a form of numpy matrix
+    :param eps: epsilon value
+    :returns: new allocation for the portfolio securities
+    """
     # update portfolio
     b_t = []
-    for i, stock in enumerate(context.stocks):
-        b_t.append(context.portfolio.positions[stock].amount * data[stock].price)
+    for i, stock in enumerate(stocks):
+        b_t.append(portfolio.positions[stock].amount * data[stock].price)
 
     b_t = np.divide(b_t, np.sum(b_t))
 
-    m = len(context.stocks)
+    m = len(stocks)
     x_tilde = np.zeros(m)
     b = np.zeros(m)
 
-    for i, stock in enumerate(context.stocks):
+    for i, stock in enumerate(stocks):
         # Use numpy median until L1 median (spatial median) implemented
         median_price = np.median(prices[:,i])
         x_tilde[i] = median_price/prices[-1,i]
@@ -90,7 +105,7 @@ def handle_data(context, data):
 
     # Calculate terms for lambda (lam)
     dot_prod = np.dot(b_t, x_tilde)
-    num = context.eps - dot_prod
+    num = eps - dot_prod
     denom = (np.linalg.norm((x_tilde - x_bar))) ** 2
 
     # test for divide-by-zero case
@@ -101,9 +116,7 @@ def handle_data(context, data):
 
     b = b_t + lam*(x_tilde-x_bar)
 
-    b_norm = simplex_projection(b)
-
-    rebalance_portfolio(context, b_norm)
+    return simplex_projection(b)
 
 def rebalance_portfolio(context, desired_port):
     """
