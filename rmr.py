@@ -5,7 +5,6 @@ Zhou. International Joint Conference on Artificial Intelligence, 2013.
 http://ijcai.org/papers13/Papers/IJCAI13-296.pdf
 """
 
-from itertools import repeat
 import numpy as np
 from pytz import timezone
 
@@ -52,7 +51,9 @@ def handle_data(context, data):
     if not context.init:
         # initializisation. Buy the same amount of each security
         part = 1. / len(context.stocks)
-        rebalance_portfolio(context, repeat(part))
+        for stock in context.stocks:
+            order_target_percent(stock, part)
+
         context.init = True
         return
 
@@ -73,7 +74,10 @@ def handle_data(context, data):
 
     parts = rmr_strategy(context.portfolio, context.stocks, data,
                          prices, context.eps)
-    rebalance_portfolio(context, parts)
+
+    # rebalance portfolio accroding to new allocation
+    for stock, portion in zip(context.stocks, parts):
+        order_target_percent(stock, portion)
 
 def rmr_strategy(portfolio, stocks, data, prices, eps):
     """
@@ -112,16 +116,6 @@ def rmr_strategy(portfolio, stocks, data, prices, eps):
         b =  b_t + max(0, num/denom) *  (x_tilde -  x_bar)
 
     return simplex_projection(b)
-
-def rebalance_portfolio(context, desired_port):
-    """
-    Rebalance portfolio according to desired percentage.
-
-    :param context: context object
-    :param desired_port: list of desired percentages
-    """
-    for stock, portion in zip(context.stocks, desired_port):
-        order_target_percent(stock, portion)
 
 def simplex_projection(v, b=1):
     """
