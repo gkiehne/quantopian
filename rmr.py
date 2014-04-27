@@ -98,9 +98,6 @@ def rmr_strategy(portfolio, stocks, data, prices, eps):
         median_price = np.median(prices[:,i])
         x_tilde[i] = median_price/prices[-1,i]
 
-    ###########################
-    # Inside of OLMAR (algo 2)
-
     x_bar = x_tilde.mean()
 
     # Calculate terms for lambda (lam)
