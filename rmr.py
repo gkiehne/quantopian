@@ -99,9 +99,7 @@ def rmr_strategy(portfolio, stocks, data, prices, eps):
 
     x_tilde = np.zeros(len(stocks))
     for i, stock in enumerate(stocks):
-        # Use numpy median until L1 median (spatial median) implemented
-        median_price = np.median(prices[:,i])
-        x_tilde[i] = median_price/prices[-1,i]
+        x_tilde[i] = l1_median(prices[:,i])/prices[-1,i]
 
     x_bar = x_tilde.mean()
 
@@ -153,3 +151,26 @@ def simplex_projection(v, b=1):
     w = (v - theta)
     w[w < 0] = 0
     return w
+
+def l1_median(x):
+    """
+Computes L1 median (spatial median) using brute force grid search.
+
+:param x: a numpy 1D ndarray (vector) of values
+:returns: scalar estimate of L1 median of values
+"""
+    
+    x_min = np.amin(x)
+    x_max = np.amax(x)
+    
+    mu = np.linspace(x_min, x_max, num=50)
+    
+    sum_dist = np.zeros_like(mu)
+    
+    for k in range(len(mu)):
+        mu_k = mu[k]*np.ones_like(x)
+        sum_dist[k] = np.sum(np.absolute(x-mu_k))
+        
+    l_min = np.argmin(sum_dist)
+    
+    return mu[l_min]
