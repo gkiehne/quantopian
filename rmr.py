@@ -48,7 +48,7 @@ def handle_data(context, data):
                  It represents a snapshot of your algorithm's universe as of
                  when this method was called.
     """
-    prices = history(6,'1d','price').as_matrix(context.stocks)[0:-1,:]
+    prices = history(6, '1d', 'price').as_matrix(context.stocks)[0:-1,:]
 
     cash = context.portfolio.cash
     record(cash=cash)
@@ -68,9 +68,9 @@ def handle_data(context, data):
 
     # update portfolio
     for i, stock in enumerate(context.stocks):
-        context.b_t[i] = context.portfolio.positions[stock].amount*data[stock].price
+        context.b_t[i] = context.portfolio.positions[stock].amount * data[stock].price
 
-    context.b_t = np.divide(context.b_t,np.sum(context.b_t))
+    context.b_t = np.divide(context.b_t, np.sum(context.b_t))
 
     m = context.m
     x_tilde = np.zeros(m)
@@ -89,7 +89,7 @@ def handle_data(context, data):
     # Calculate terms for lambda (lam)
     dot_prod = np.dot(context.b_t, x_tilde)
     num = context.eps - dot_prod
-    denom = (np.linalg.norm((x_tilde-x_bar)))**2
+    denom = (np.linalg.norm((x_tilde - x_bar))) ** 2
 
     # test for divide-by-zero case
     if denom == 0.0:
@@ -111,7 +111,7 @@ def rebalance_portfolio(context, desired_port):
     :param desired_port: list of desired percentages
     """
     for i, stock in enumerate(context.stocks):
-        order_target_percent(stock,desired_port[i])
+        order_target_percent(stock, desired_port[i])
 
 def intradingwindow_check(context):
     """
@@ -161,5 +161,5 @@ def simplex_projection(v, b=1):
     rho = np.where(u > (sv - b) / np.arange(1, p+1))[0][-1]
     theta = np.max([0, (sv[rho] - b) / (rho+1)])
     w = (v - theta)
-    w[w<0] = 0
+    w[w < 0] = 0
     return w
