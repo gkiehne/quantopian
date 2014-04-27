@@ -56,7 +56,9 @@ def handle_data(context, data):
         context.init = True
         return
 
-    if not intradingwindow_check(context):
+    # Trade only once per day, at 10:00
+    loc_dt = get_datetime().astimezone(timezone('US/Eastern'))
+    if loc_dt.hour != 10 or loc_dt.minute != 0:
         return
 
     if get_open_orders():
@@ -120,20 +122,6 @@ def rebalance_portfolio(context, desired_port):
     """
     for stock, portion in zip(context.stocks, desired_port):
         order_target_percent(stock, portion)
-
-def intradingwindow_check(context):
-    """
-    Check if algo is in trading window.
-
-    :param context: context object
-    :returns: True if algo is in trading window, False otherwise.
-    """
-    # Converts all time-zones into US EST to avoid confusion
-    loc_dt = get_datetime().astimezone(timezone('US/Eastern'))
-    if loc_dt.hour == 10 and loc_dt.minute == 0:
-        return True
-    else:
-        return False
 
 def simplex_projection(v, b=1):
     """
