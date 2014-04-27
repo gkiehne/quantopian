@@ -5,6 +5,7 @@ Zhou. International Joint Conference on Artificial Intelligence, 2013.
 http://ijcai.org/papers13/Papers/IJCAI13-296.pdf
 """
 
+from itertools import repeat
 import numpy as np
 from pytz import timezone
 
@@ -28,8 +29,6 @@ def initialize(context):
                        sid(19654),  # XLB Materials SPDR Fund
                        sid(19660) ] # XLU Utilities SPRD Fund
 
-    context.m = len(context.stocks)
-    context.b_t = np.ones(context.m) / context.m
     context.eps = 5 # change epsilon here
     context.init = False
 
@@ -52,7 +51,9 @@ def handle_data(context, data):
     record(cash=cash)
 
     if not context.init:
-        rebalance_portfolio(context, context.b_t)
+        # initializisation. Buy the same amount of each security
+        part = 1. / len(context.stocks)
+        rebalance_portfolio(context, repeat(part))
         context.init = True
         return
 
@@ -67,12 +68,13 @@ def handle_data(context, data):
     prices = history(6, '1d', 'price').as_matrix(context.stocks)[0:-1,:]
 
     # update portfolio
+    b_t = []
     for i, stock in enumerate(context.stocks):
-        context.b_t[i] = context.portfolio.positions[stock].amount * data[stock].price
+        b_t.append(context.portfolio.positions[stock].amount * data[stock].price)
 
-    context.b_t = np.divide(context.b_t, np.sum(context.b_t))
+    b_t = np.divide(b_t, np.sum(b_t))
 
-    m = context.m
+    m = len(context.stocks)
     x_tilde = np.zeros(m)
     b = np.zeros(m)
 
@@ -87,7 +89,7 @@ def handle_data(context, data):
     x_bar = x_tilde.mean()
 
     # Calculate terms for lambda (lam)
-    dot_prod = np.dot(context.b_t, x_tilde)
+    dot_prod = np.dot(b_t, x_tilde)
     num = context.eps - dot_prod
     denom = (np.linalg.norm((x_tilde - x_bar))) ** 2
 
@@ -97,7 +99,7 @@ def handle_data(context, data):
     else:
         lam = max(0, num/denom)
 
-    b = context.b_t + lam*(x_tilde-x_bar)
+    b = b_t + lam*(x_tilde-x_bar)
 
     b_norm = simplex_projection(b)
 
