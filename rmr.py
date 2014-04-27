@@ -60,9 +60,12 @@ def handle_data(context, data):
     if not intradingwindow_check(context):
         return
 
-    # skip bar if any orders are open or any stocks did not trade
+    if get_open_orders():
+        return
+
+    # skip bar if any stocks did not trade
     for stock in context.stocks:
-        if bool(get_open_orders(stock)) or data[stock].datetime < get_datetime():
+        if data[stock].datetime < get_datetime():
             return
 
     prices = history(6, '1d', 'price').as_matrix(context.stocks)[0:-1,:]
