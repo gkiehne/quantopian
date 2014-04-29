@@ -1,22 +1,28 @@
 def l1_median(x):
     """
-Computes L1 median (spatial median) using brute force grid search.
+Computes L1 median (spatial median) using scipy.optimize.minimize_scalar
 
 :param x: a numpy 1D ndarray (vector) of values
 :returns: scalar estimate of L1 median of values
 """
+    a = float(np.amin(x))
+    b = float(np.amax(x))
     
-    x_min = np.amin(x)
-    x_max = np.amax(x)
+    res = minimize_scalar(dist_sum, bounds = (a,b), args = tuple(x), method='bounded')
     
-    mu = np.linspace(x_min, x_max, num=50)
+    return res.x
+
+def dist_sum(m,*args):
+    """
+1D sum of Euclidian distances
+
+:param m: scalar position
+:param *args: tuple of positions 
+:returns: 1D sum of Euclidian distances
+"""
     
-    sum_dist = np.zeros_like(mu)
+    s = 0
+    for x in args:
+        s += abs(x-m)
     
-    for k in range(len(mu)):
-        mu_k = mu[k]*np.ones_like(x)
-        sum_dist[k] = np.sum(np.absolute(x-mu_k))
-        
-    l_min = np.argmin(sum_dist)
-    
-    return mu[l_min]
+    return s
