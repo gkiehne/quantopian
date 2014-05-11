@@ -7,6 +7,7 @@ http://ijcai.org/papers13/Papers/IJCAI13-296.pdf
 
 import numpy as np
 from pytz import timezone
+from scipy.optimize import minimize_scalar
 
 def initialize(context):
     """
@@ -31,8 +32,20 @@ def initialize(context):
     context.eps = 5 # change epsilon here
     context.init = False
 
-    set_slippage(slippage.FixedSlippage(spread=0.00))
-    set_commission(commission.PerTrade(cost=0))
+    context.timeframe = 'Daily' # Algo time frame
+
+    context.bar_count = 1
+    context.trading_frequency = 1 # trading frequency in bars
+    context.window = 15 # trailing window length in bars
+
+    context.prices = np.zeros([context.window, len(context.stocks)])
+
+    if context.timeframe == 'Daily':
+        set_slippage(TradeAtTheOpenSlippageModel(0.1))
+    else:
+        set_slippage(slippage.FixedSlippage(spread=0.03))
+
+    set_commission(commission.PerTrade(cost=5))
 
 def handle_data(context, data):
     """
@@ -54,12 +67,25 @@ def handle_data(context, data):
         for stock in context.stocks:
             order_target_percent(stock, part)
 
+        accumulator(context, data)
         context.init = True
         return
 
-    # Trade only once per day, at 10:00
-    loc_dt = get_datetime().astimezone(timezone('US/Eastern'))
-    if loc_dt.hour != 10 or loc_dt.minute != 0:
+    if context.timeframe == 'Daily':
+        # accumulate price data
+        accumulator(context, data)
+        context.bar_count += 1
+
+        if context.bar_count < context.window:
+            return
+    else:
+        # Trade only once per day, at 10:00
+        loc_dt = get_datetime().astimezone(timezone('US/Eastern'))
+        if loc_dt.hour != 10 or loc_dt.minute != 0:
+            return
+        context.bar_count += 1
+
+    if context.bar_count % context.trading_frequency:
         return
 
     if get_open_orders():
@@ -70,7 +96,12 @@ def handle_data(context, data):
         if data[stock].datetime < get_datetime():
             return
 
-    prices = history(6, '1d', 'price').as_matrix(context.stocks)[0:-1,:]
+    if context.timeframe == 'Daily':
+        prices = context.prices
+    else:
+        # uncomment below line for minute time frame to work
+        # prices = history(15, '1d', 'price').as_matrix(context.stocks)[0:-1,:]
+        pass
 
     parts = rmr_strategy(context.portfolio, context.stocks, data,
                          prices, context.eps)
@@ -154,23 +185,78 @@ def simplex_projection(v, b=1):
 
 def l1_median(x):
     """
-Computes L1 median (spatial median) using brute force grid search.
+    Computes L1 median (spatial median) using scipy.optimize.minimize_scalar
 
-:param x: a numpy 1D ndarray (vector) of values
-:returns: scalar estimate of L1 median of values
-"""
-    
-    x_min = np.amin(x)
-    x_max = np.amax(x)
-    
-    mu = np.linspace(x_min, x_max, num=50)
-    
-    sum_dist = np.zeros_like(mu)
-    
-    for k in range(len(mu)):
-        mu_k = mu[k]*np.ones_like(x)
-        sum_dist[k] = np.sum(np.absolute(x-mu_k))
-        
-    l_min = np.argmin(sum_dist)
-    
-    return mu[l_min]
+    :param x: a numpy 1D ndarray (vector) of values
+    :returns: scalar estimate of L1 median of values
+    """
+    x_min = float(np.amin(x))
+    x_max = float(np.amax(x))
+
+    res = minimize_scalar(dist_sum, bounds = (x_min, x_max),
+                          args = tuple(x), method='bounded')
+
+    return res.x
+
+def dist_sum(m, *args):
+    """
+    1D sum of Euclidian distances
+
+    :param m: scalar position
+    :param *args: tuple of positions
+    :returns: 1D sum of Euclidian distances
+    """
+    return sum(abs(arg - m) for arg in args)
+
+def accumulator(context, data):
+    """
+    Accumulate price data into context.prices
+
+    :param context: context object
+    :param data: A dictionary containing market data keyed by security id.
+    :returns: None
+    """
+    if context.bar_count < context.window:
+        for i, stock in enumerate(context.stocks):
+            context.prices[context.bar_count, i] = data[stock].price
+    else:
+        context.prices = np.roll(context.prices, -1, axis=0)
+        for i, stock in enumerate(context.stocks):
+            context.prices[-1, i] = data[stock].price
+
+class TradeAtTheOpenSlippageModel(slippage.SlippageModel):
+    """
+    Custom slippage model to allow trading at the open
+    or at a fraction of the open to close range.
+    """
+
+    def __init__(self, fraction):
+        """
+        Constructor. Set fraction of the open to close range to
+        add (subtract) from the open to model executions more optimistically
+
+        :param fraction: fraction of open-close range to take as
+                         the execution price
+        """
+        self.fraction = fraction
+
+    def process_order(self, trade_bar, order):
+        """
+        Process order.
+        https://www.quantopian.com/help#ide-slippage
+
+        :param trade_bar: price data
+        :param order: order object
+        :returns: transaction object
+        """
+        open_price = trade_bar.open_price
+        close_price = trade_bar.close_price
+        ocrange = (close_price - open_price) * self.fraction
+        exec_price = open_price + ocrange
+        log.info('Order:{0} open:{1} close:{2} exec:{3} side:{4}'.format(
+            trade_bar.sid.symbol, open_price, close_price,
+            exec_price, order.direction))
+
+        # Create the transaction using calculated execution price
+        return slippage.create_transaction(trade_bar, order,
+                                           exec_price, order.amount)
